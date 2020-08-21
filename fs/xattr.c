@@ -431,6 +431,7 @@ getxattr(struct dentry *d, const char __user *name, void __user *value,
 	void *kvalue = NULL;
 	void *vvalue = NULL;
 	char kname[XATTR_NAME_MAX + 1];
+	char kvalue_onstack[255];
 
 	error = strncpy_from_user(kname, name, sizeof(kname));
 	if (error == 0 || error == sizeof(kname))
