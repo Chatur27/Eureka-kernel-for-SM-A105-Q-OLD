@@ -75,7 +75,7 @@ static spinlock_t speedchange_cpumask_lock;
 static struct mutex gov_lock;
 
 /* Target load.  Lower values result in higher CPU speeds. */
-#define DEFAULT_TARGET_LOAD 90
+#define DEFAULT_TARGET_LOAD 80
 static unsigned int default_target_loads[] = {DEFAULT_TARGET_LOAD};
 
 #define DEFAULT_TIMER_RATE (20 * USEC_PER_MSEC)
@@ -88,7 +88,7 @@ struct cpufreq_interactive_tunables {
 	/* Hi speed to bump to from lo speed when load burst (default max) */
 	unsigned int hispeed_freq;
 	/* Go to hi speed when CPU load at or above this value. */
-#define DEFAULT_GO_HISPEED_LOAD 99
+#define DEFAULT_GO_HISPEED_LOAD 100
 	unsigned long go_hispeed_load;
 	/* Target load. Lower values result in higher CPU speeds. */
 	spinlock_t target_loads_lock;
@@ -98,7 +98,7 @@ struct cpufreq_interactive_tunables {
 	 * The minimum amount of time to spend at a frequency before we can ramp
 	 * down.
 	 */
-#define DEFAULT_MIN_SAMPLE_TIME (80 * USEC_PER_MSEC)
+#define DEFAULT_MIN_SAMPLE_TIME (70 * USEC_PER_MSEC)
 	unsigned long min_sample_time;
 	/*
 	 * The sample rate of the timer used to increase frequency
@@ -355,13 +355,13 @@ static u64 update_load(int cpu)
 		pcpu->policy->governor_data;
 	u64 now;
 	u64 now_idle;
-	unsigned int delta_idle;
-	unsigned int delta_time;
+	u64 delta_idle;
+	u64 delta_time;
 	u64 active_time;
 
 	now_idle = get_cpu_idle_time(cpu, &now, tunables->io_is_busy);
-	delta_idle = (unsigned int)(now_idle - pcpu->time_in_idle);
-	delta_time = (unsigned int)(now - pcpu->time_in_idle_timestamp);
+	delta_idle = (now_idle - pcpu->time_in_idle);
+	delta_time = (now - pcpu->time_in_idle_timestamp);
 
 	if (delta_time <= delta_idle)
 		active_time = 0;
@@ -436,11 +436,11 @@ static void cpufreq_interactive_timer(unsigned long data)
 	do_div(cputime_speedadj, delta_time);
 #endif
 	loadadjfreq = (unsigned int)cputime_speedadj * 100;
-	cpu_load = loadadjfreq / pcpu->policy->cur;
+	cpu_load = loadadjfreq / pcpu->target_freq;
 	tunables->boosted = tunables->boost_val || now < tunables->boostpulse_endtime;
 
 	if (cpu_load >= tunables->go_hispeed_load || tunables->boosted) {
-		if (pcpu->policy->cur < tunables->hispeed_freq) {
+		if (pcpu->target_freq < tunables->hispeed_freq) {
 			new_freq = tunables->hispeed_freq;
 		} else {
 			new_freq = choose_freq(pcpu, loadadjfreq);
@@ -464,13 +464,13 @@ static void cpufreq_interactive_timer(unsigned long data)
 
 	new_freq = pcpu->freq_table[index].frequency;
 
-	if (pcpu->policy->cur >= tunables->hispeed_freq &&
-	    new_freq > pcpu->policy->cur &&
+	if (pcpu->target_freq >= tunables->hispeed_freq &&
+	    new_freq > pcpu->target_freq &&
 	    now - pcpu->pol_hispeed_val_time <
-	    freq_to_above_hispeed_delay(tunables, pcpu->policy->cur)) {
+	    freq_to_above_hispeed_delay(tunables, pcpu->target_freq)) {
 		trace_cpufreq_interactive_notyet(
 			data, cpu_load, pcpu->target_freq,
-			pcpu->policy->cur, new_freq);
+			pcpu->target_freq, new_freq);
 		spin_unlock_irqrestore(&pcpu->target_freq_lock, flags);
 		goto target_update;
 	}
@@ -1409,8 +1409,6 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		mutex_lock(&gov_lock);
 
 		freq_table = cpufreq_frequency_get_table(policy->cpu);
-		if (!tunables->hispeed_freq)
-			tunables->hispeed_freq = policy->max;
 
 		for_each_cpu(j, policy->cpus) {
 			pcpu = &per_cpu(cpuinfo, j);
