@@ -1144,6 +1144,12 @@ config TOUCHSCREEN_HIMAX_CHIPSET
 
 	  If unsure, say N.
 
+config WAKE_GESTURES
+	bool "wake gestures"
+	help
+	  Say Y here if you want to enable support for wake gestures namely
+	  doubletap2wake, sweep2wake and sweep2sleep.
+
 source "drivers/input/touchscreen/zinitix/Kconfig"
 source "drivers/input/touchscreen/sec_ts/Kconfig"
 source "drivers/input/touchscreen/sec_incell_ts/Kconfig"

@@ -111,3 +111,4 @@ obj-$(CONFIG_TOUCHSCREEN_IST4050)	+= imagis/ist4050/
 obj-$(CONFIG_TOUCHSCREEN_NT36xxx)	+= novatek_nt36xx/
 obj-$(CONFIG_TOUCHSCREEN_HIMAX_INCELL) += himax_83xxx/
 obj-$(CONFIG_TOUCHSCREEN_HIMAX_CHIPSET)	+= himax/himax_83102P/
+obj-$(CONFIG_WAKE_GESTURES)		+= wake_gestures.o
