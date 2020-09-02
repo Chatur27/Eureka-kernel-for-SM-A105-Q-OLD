@@ -10,6 +10,16 @@
  * published by the Free Software Foundation.
  */
 
+#ifdef CONFIG_WAKE_GESTURES
+#include <linux/kernel.h>
+#include <linux/wake_gestures.h>
+static bool is_suspended;
+bool scr_suspended(void)
+{
+	return is_suspended;
+}
+#endif
+
 struct sec_ts_data *tsp_info;
 
 #include "sec_ts.h"
@@ -843,6 +853,11 @@ static void sec_ts_read_event(struct sec_ts_data *ts)
 						input_report_key(ts->input_dev, BTN_TOUCH, 1);
 						input_report_key(ts->input_dev, BTN_TOOL_FINGER, 1);
 
+#ifdef CONFIG_WAKE_GESTURES
+						if (is_suspended)
+							ts->coord[t_id].x += 5000;
+#endif
+
 						input_report_abs(ts->input_dev, ABS_MT_POSITION_X, ts->coord[t_id].x);
 						input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, ts->coord[t_id].y);
 						input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, ts->coord[t_id].major);
@@ -1660,7 +1675,7 @@ static int sec_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 	pm_qos_add_request(&ts->pm_qos_req, PM_QOS_CPU_DMA_LATENCY,
 			   PM_QOS_DEFAULT_VALUE);
 
-	ts->plat_data->irq_type |= IRQF_PERF_CRITICAL;
+	/* ts->plat_data->irq_type |= IRQF_PERF_CRITICAL; */
 	ret = request_threaded_irq(client->irq, NULL, sec_ts_irq_thread,
 			ts->plat_data->irq_type, SEC_TS_I2C_NAME, ts);
 	if (ret < 0) {
@@ -1913,17 +1928,47 @@ static int sec_ts_input_open(struct input_dev *dev)
 		return 0;
 	}
 
+#ifdef CONFIG_WAKE_GESTURES
+	is_suspended = false;
+#endif
+
 	ts->abc_err_flag = false;
 	ts->input_closed = false;
 
 	input_info(true, &ts->client->dev, "%s\n", __func__);
+/*
+	if (ts->power_status == SEC_TS_STATE_LPM) {
+#ifdef USE_RESET_EXIT_LPM
+		schedule_delayed_work(&ts->reset_work, msecs_to_jiffies(TOUCH_RESET_DWORK_TIME));
+#else
+#ifdef CONFIG_WAKE_GESTURES
+		if (s2w_switch || dt2w_switch)
+			disable_irq_wake(ts->client->irq);
+		else
+#endif
+		sec_ts_set_lowpowermode(ts, TO_TOUCH_MODE);
+#endif
+	} else {
+*/
+		ret = sec_ts_start_device(ts);
+		if (ret < 0)
+			input_err(true, &ts->client->dev, "%s: Failed to start device\n", __func__);
 
-	ret = sec_ts_start_device(ts);
-	if (ret < 0)
-		input_err(true, &ts->client->dev, "%s: Failed to start device\n", __func__);
+/*	} */
 
 	/* because edge and dead zone will recover soon */
 	sec_ts_set_grip_type(ts, ONLY_EDGE_HANDLER);
+
+#ifdef CONFIG_WAKE_GESTURES
+	if (dt2w_switch_changed) {
+		dt2w_switch = dt2w_switch_temp;
+		dt2w_switch_changed = false;
+	}
+	if (s2w_switch_changed) {
+		s2w_switch = s2w_switch_temp;
+		s2w_switch_changed = false;
+	}
+#endif
 
 	return 0;
 }
@@ -1942,6 +1987,10 @@ static void sec_ts_input_close(struct input_dev *dev)
 		return;
 	}
 
+#ifdef CONFIG_WAKE_GESTURES
+	is_suspended = true;
+#endif
+
 	ts->input_closed = true;
 
 	input_info(true, &ts->client->dev, "%s\n", __func__);
@@ -1957,9 +2006,26 @@ static void sec_ts_input_close(struct input_dev *dev)
 	stui_cancel_session();
 #endif
 
-	sec_ts_stop_device(ts);
+#ifdef CONFIG_WAKE_GESTURES
+	if (s2w_switch || dt2w_switch)
+		enable_irq_wake(ts->client->irq);
+	else
+#endif
+/*
+	if (ts->lowpower_mode) {
+		int ret;
 
-	ts->abc_err_flag = true;
+		ret = sec_ts_set_lowpowermode(ts, TO_LOWPOWER_MODE);
+		if (ts->reset_is_on_going && (ret < 0)) {
+			input_err(true, &ts->client->dev, "%s: failed to reset, ret:%d\n", __func__, ret);
+			ts->reset_is_on_going = false;
+			schedule_delayed_work(&ts->reset_work, msecs_to_jiffies(TOUCH_RESET_DWORK_TIME));
+		}
+	} else {
+*/
+		sec_ts_stop_device(ts);
+		ts->abc_err_flag = true;
+/*	} */
 }
 #endif
 
