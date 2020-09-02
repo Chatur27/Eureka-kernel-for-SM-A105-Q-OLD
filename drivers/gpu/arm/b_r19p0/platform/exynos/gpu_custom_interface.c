@@ -844,6 +844,9 @@ static ssize_t set_max_lock_dvfs(struct device *dev, struct device_attribute *at
 	int ret, clock = 0;
 	struct exynos_context *platform = (struct exynos_context *)pkbdev->platform_context;
 
+	// Kill it from now without interferring Game Launcher
+	return count;
+	
 	if (!platform)
 		return -ENODEV;
 
@@ -913,6 +916,9 @@ static ssize_t set_min_lock_dvfs(struct device *dev, struct device_attribute *at
 	int ret, clock = 0;
 	struct exynos_context *platform = (struct exynos_context *)pkbdev->platform_context;
 
+	// Kill it from now without interferring Game Launcher
+	return count;
+	
 	if (!platform)
 		return -ENODEV;
 
@@ -1687,7 +1693,7 @@ DEVICE_ATTR(dvfs_governor, S_IRUGO|S_IWUSR, show_governor, set_governor);
 DEVICE_ATTR(dvfs_max_lock_status, S_IRUGO, show_max_lock_status, NULL);
 DEVICE_ATTR(dvfs_min_lock_status, S_IRUGO, show_min_lock_status, NULL);
 DEVICE_ATTR(dvfs_max_lock, S_IRUGO|S_IWUSR, show_max_lock_dvfs, set_max_lock_dvfs);
-DEVICE_ATTR(dvfs_min_lock, S_IRUGO|S_IWUSR, show_min_lock_dvfs, set_min_lock_dvfs);
+DEVICE_ATTR(dvfs_min_lock, S_IRUGO, show_min_lock_dvfs, NULL);
 DEVICE_ATTR(down_staycount, S_IRUGO|S_IWUSR, show_down_staycount, set_down_staycount);
 DEVICE_ATTR(highspeed_clock, S_IRUGO|S_IWUSR, show_highspeed_clock, set_highspeed_clock);
 DEVICE_ATTR(highspeed_load, S_IRUGO|S_IWUSR, show_highspeed_load, set_highspeed_load);
