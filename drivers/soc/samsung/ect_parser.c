@@ -582,8 +582,8 @@ static int ect_parse_ap_thermal_function(int parser_version, void *address, stru
 			range->max_frequency = 2080000;
 		else if (range->max_frequency == 1482000) //for little cores
 			range->max_frequency = 1690000;
-		/* else if (range->max_frequency == 1352000) //for little cores but conflicts with big cores' frequency
-			range->max_frequency = 1690000; */
+		else if (range->max_frequency == 1352000) //for little cores but conflicts with big cores' frequency
+			range->max_frequency = 1690000;
 		
 		ect_parse_integer(&address, &range->sw_trip);
 		ect_parse_integer(&address, &range->flag);
