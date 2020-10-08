@@ -56,9 +56,6 @@
 #include "mali_kbase_hwcnt_legacy.h"
 #include "mali_kbase_vinstr.h"
 
-/* MALI_SEC_INTEGRATION */
-#include <mali_kbase_uku.h>
-
 #ifdef CONFIG_MALI_CINSTR_GWT
 #include "mali_kbase_gwt.h"
 #endif
@@ -104,13 +101,6 @@
 #include <mali_kbase_timeline.h>
 
 #include <mali_kbase_as_fault_debugfs.h>
-/* MALI_SEC_INTEGRATION */
-#include <backend/gpu/mali_kbase_pm_internal.h>
-
-/* MALI_SEC_INTEGRATION */
-#ifdef CONFIG_MALI_ASV_CALIBRATION_SUPPORT
-#include "./platform/exynos/gpu_control.h"
-#endif
 
 /* GPU IRQ Tags */
 #define	JOB_IRQ_TAG	0
@@ -273,23 +263,10 @@ static void kbase_file_delete(struct kbase_file *const kfile)
 
 	if (atomic_read(&kfile->setup_state) == KBASE_FILE_COMPLETE) {
 		struct kbase_context *kctx = kfile->kctx;
-		/* MALI_SEC_INTEGRATION */
-		struct kbase_context *lookup, *tmp;
 
 #if 0
 		kbasep_mem_profile_debugfs_remove(kctx);
 #endif
-
-		/* MALI_SEC_INTEGRATION
-		 * look up context list to set destroying_context
-		 */
-		mutex_lock(&kbdev->kctx_list_lock);
-		list_for_each_entry_safe(lookup, tmp, &kbdev->kctx_list, kctx_list_link) {
-			if (kctx == lookup) {
-				kctx->destroying_context = true;
-			}
-		}
-		mutex_unlock(&kbdev->kctx_list_lock);
 
 		mutex_lock(&kctx->legacy_hwcnt_lock);
 		/* If this client was performing hardware counter dumping and
@@ -1201,26 +1178,6 @@ static int kbase_api_soft_event_update(struct kbase_context *kctx,
 	return kbase_soft_event_update(kctx, update->event, update->new_status);
 }
 
-/* MALI_SEC_INTEGRATION */
-static int kbase_api_combination_boost(struct kbase_context *kctx,
-		struct kbase_ioctl_slsi_combination_boost_flags *flags)
-{
-	if (flags->flags == 0)
-		return -EINVAL;
-
-	return gpu_vendor_dispatch(kctx, flags->flags);
-}
-
-/* MALI_SEC_INTEGRATION */
-static int kbase_api_vk_boost(struct kbase_context *kctx,
-		struct kbase_ioctl_slsi_vk_boost_flags *flags)
-{
-	if (flags->flags == 0)
-		return -EINVAL;
-
-	return gpu_vendor_dispatch(kctx, flags->flags);
-}
-
 static int kbase_api_sticky_resource_map(struct kbase_context *kctx,
 		struct kbase_ioctl_sticky_resource_map *map)
 {
@@ -1617,20 +1574,6 @@ static long kbase_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				kctx);
 		break;
 #endif
-		/* MALI_SEC_INTEGRATION */
-	case KBASE_IOCTL_SLSI_COMBINATION_BOOST_FLAGS:
-		KBASE_HANDLE_IOCTL_IN(KBASE_IOCTL_SLSI_COMBINATION_BOOST_FLAGS,
-				kbase_api_combination_boost,
-				struct kbase_ioctl_slsi_combination_boost_flags,
-				kctx);
-		break;
-	case KBASE_IOCTL_SLSI_VK_BOOST_FLAGS:
-		/* MALI_SEC_INTEGRATION */
-		KBASE_HANDLE_IOCTL_IN(KBASE_IOCTL_SLSI_VK_BOOST_FLAGS,
-				kbase_api_vk_boost,
-				struct kbase_ioctl_slsi_vk_boost_flags,
-				kctx);
-		break;
 	}
 
 	dev_warn(kbdev->dev, "Unknown ioctl 0x%x nr:%d", cmd, _IOC_NR(cmd));
@@ -1756,20 +1699,6 @@ static const struct file_operations kbase_fops = {
 	.check_flags = kbase_check_flags,
 	.get_unmapped_area = kbase_get_unmapped_area,
 };
-
-/* MALI_SEC_INTEGRATION */
-/* It is using mali_kbase_pm_driver.c for IFPO */
-void kbase_os_reg_write(struct kbase_device *kbdev, u16 offset, u32 value)
-{
-		writel(value, kbdev->reg + offset);
-}
-
-/* MALI_SEC_INTEGRATION */
-/* It is using mali_kbase_pm_driver.c for IFPO */
-u32 kbase_os_reg_read(struct kbase_device *kbdev, u16 offset)
-{
-		return readl(kbdev->reg + offset);
-}
 
 /**
  * show_policy - Show callback for the power_policy sysfs file.
@@ -3246,7 +3175,7 @@ static const struct file_operations kbasep_serialize_jobs_debugfs_fops = {
 
 #endif /* CONFIG_DEBUG_FS */
 #endif /* MALI_KBASE_BUILD */
-#if !defined(CONFIG_MALI_EXYNOS_SECURE_RENDERING)
+
 static void kbasep_protected_mode_hwcnt_disable_worker(struct work_struct *data)
 {
 	struct kbase_device *kbdev = container_of(data, struct kbase_device,
@@ -3361,27 +3290,6 @@ static void kbasep_protected_mode_term(struct kbase_device *kbdev)
 		kfree(kbdev->protected_dev);
 	}
 }
-#else /* if defined(CONFIG_MALI_EXYNOS_SECURE_RENDERING) */
-static int kbasep_protected_mode_init(struct kbase_device *kbdev)
-{
-    dev_info(kbdev->dev, "Support Secure Rendering with Exynos SoC\n");
-    /* Use native protected ops */
-    kbdev->protected_dev = kzalloc(sizeof(*kbdev->protected_dev),
-            GFP_KERNEL);
-    if (!kbdev->protected_dev)
-        return -ENOMEM;
-    kbdev->protected_dev->data = kbdev;
-    kbdev->protected_ops = &exynos_protected_ops;
-    kbdev->protected_mode_support = true;
-    return 0;
-}
-
-static void kbasep_protected_mode_term(struct kbase_device *kbdev)
-{
-    kfree(kbdev->protected_dev);
-    kbdev->protected_mode_support = false;
-}
-#endif
 
 #ifdef CONFIG_MALI_NO_MALI
 static int kbase_common_reg_map(struct kbase_device *kbdev)
@@ -3666,9 +3574,6 @@ MAKE_QUIRK_ACCESSORS(tiler);
 MAKE_QUIRK_ACCESSORS(mmu);
 MAKE_QUIRK_ACCESSORS(jm);
 
-#ifndef MALI_SEC_INTEGRATION
-extern const struct file_operations kbasep_trace_debugfs_fops;
-#endif /* MALI_SEC_INTEGRATION */
 
 /**
  * debugfs_protected_debug_mode_read - "protected_debug_mode" debugfs read
@@ -3757,32 +3662,16 @@ static int kbase_device_debugfs_init(struct kbase_device *kbdev)
 	struct dentry *debugfs_ctx_defaults_directory;
 	int err;
 
-#ifdef MALI_SEC_INTEGRATION
 	kbdev->mali_debugfs_directory = debugfs_create_dir(kbdev->devname,
 			NULL);
-#else
-		kbdev->mali_debugfs_directory = debugfs_create_dir("mali",
-					NULL);
-#endif /* MALI_SEC_INTEGRATION */
-
 	if (!kbdev->mali_debugfs_directory) {
 		dev_err(kbdev->dev, "Couldn't create mali debugfs directory\n");
 		err = -ENOMEM;
 		goto out;
 	}
 
-#ifdef MALI_SEC_INTEGRATION
 	kbdev->debugfs_ctx_directory = debugfs_create_dir("ctx",
 			kbdev->mali_debugfs_directory);
-#else
-	kbdev->trace_dentry = debugfs_create_file("mali_trace", S_IRUGO,
-			kbdev->mali_debugfs_directory, kbdev,
-			&kbasep_trace_debugfs_fops);
-
-	kbdev->debugfs_ctx_directory = debugfs_create_dir("mem",
-			kbdev->mali_debugfs_directory);
-#endif /* MALI_SEC_INTEGRATION */
-
 	if (!kbdev->debugfs_ctx_directory) {
 		dev_err(kbdev->dev, "Couldn't create mali debugfs ctx directory\n");
 		err = -ENOMEM;
@@ -4433,11 +4322,6 @@ static int kbase_platform_device_probe(struct platform_device *pdev)
 	kbase_dev_nr++;
 #endif /* MALI_KBASE_BUILD */
 
-	/* MALI_SEC_INTEGRATION */
-#ifdef CONFIG_MALI_ASV_CALIBRATION_SUPPORT
-	gpu_asv_calibration_start();
-#endif
-
 	return err;
 }
 
@@ -4455,15 +4339,8 @@ static int kbase_platform_device_probe(struct platform_device *pdev)
 static int kbase_device_suspend(struct device *dev)
 {
 	struct kbase_device *kbdev = to_kbase_device(dev);
-	/* MALI_SEC_INTEGRATION */
-	struct exynos_context *platform = NULL;
 
 	if (!kbdev)
-		return -ENODEV;
-
-	/* MALI_SEC_INTEGRATION */
-	platform = (struct exynos_context *)kbdev->platform_context;
-	if (!platform)
 		return -ENODEV;
 
 	kbase_pm_suspend(kbdev);
@@ -4476,11 +4353,6 @@ static int kbase_device_suspend(struct device *dev)
 		flush_workqueue(kbdev->devfreq_queue.workq);
 	}
 #endif
-
-	/* MALI_SEC_INTEGRATION */
-	KBASE_TRACE_ADD(kbdev, KBASE_DEVICE_SUSPEND, NULL, NULL, \
-			platform->power_runtime_suspend_ret, platform->power_runtime_resume_ret);
-
 	return 0;
 }
 
@@ -4496,15 +4368,8 @@ static int kbase_device_suspend(struct device *dev)
 static int kbase_device_resume(struct device *dev)
 {
 	struct kbase_device *kbdev = to_kbase_device(dev);
-	/* MALI_SEC_INTEGRATION */
-	struct exynos_context *platform = NULL;
 
 	if (!kbdev)
-		return -ENODEV;
-
-	/* MALI_SEC_INTEGRATION */
-	platform = (struct exynos_context *)kbdev->platform_context;
-	if (!platform)
 		return -ENODEV;
 
 	kbase_pm_resume(kbdev);
@@ -4520,11 +4385,6 @@ static int kbase_device_resume(struct device *dev)
 		flush_workqueue(kbdev->devfreq_queue.workq);
 	}
 #endif
-
-	/* MALI_SEC_INTEGRATION */
-	KBASE_TRACE_ADD(kbdev, KBASE_DEVICE_RESUME, NULL, NULL, \
-			platform->power_runtime_suspend_ret, platform->power_runtime_resume_ret);
-
 	return 0;
 }
 
@@ -4553,10 +4413,6 @@ static int kbase_device_runtime_suspend(struct device *dev)
 	if (kbdev->inited_subsys & inited_devfreq)
 		kbase_devfreq_enqueue_work(kbdev, DEVFREQ_WORK_SUSPEND);
 #endif
-
-	/* MALI_SEC_INTEGRATION */
-	if (kbdev->pm.active_count > 0)
-		return -EBUSY;
 
 	if (kbdev->pm.backend.callback_power_runtime_off) {
 		kbdev->pm.backend.callback_power_runtime_off(kbdev);
@@ -4625,17 +4481,17 @@ static int kbase_device_runtime_idle(struct device *dev)
 	if (kbdev->pm.backend.callback_power_runtime_idle)
 		return kbdev->pm.backend.callback_power_runtime_idle(kbdev);
 
-	/* MALI_SEC_INTEGRATION */
-	/* Runtime IDLE must be return 1 for turn on next time by RuntimePM API!! */
-	return 1;
-
+	/* Just need to update the device's last busy mark. Kernel will respect
+	 * the autosuspend delay and so won't suspend the device immediately.
+	 */
+	pm_runtime_mark_last_busy(kbdev->dev);
+	return 0;
 }
 #endif /* KBASE_PM_RUNTIME */
 
 /* The power management operations for the platform driver.
  */
 static const struct dev_pm_ops kbase_pm_ops = {
-	/* MALI_SEC_INTEGRATION */
 	.suspend = kbase_device_suspend,
 	.resume = kbase_device_resume,
 #ifdef KBASE_PM_RUNTIME
@@ -4647,12 +4503,8 @@ static const struct dev_pm_ops kbase_pm_ops = {
 
 #ifdef CONFIG_OF
 static const struct of_device_id kbase_dt_ids[] = {
-	/* MALI_SEC_INTEGRATION */
-	{ .compatible = "arm,mali", },
-#if 0 /* MALI_SEC_INTEGRATION : Comment out the original lines. */
 	{ .compatible = "arm,malit6xx" },
 	{ .compatible = "arm,mali-midgard" },
-#endif
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, kbase_dt_ids);

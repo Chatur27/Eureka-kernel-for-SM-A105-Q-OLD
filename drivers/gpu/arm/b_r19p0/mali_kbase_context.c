@@ -175,14 +175,6 @@ kbase_create_context(struct kbase_device *kbdev, bool is_compat,
 	spin_unlock_irqrestore(&kctx->kbdev->hwaccess_lock, irq_flags);
 	mutex_unlock(&js_kctx_info->ctx.jsctx_mutex);
 
-	/* MALI_SEC_INTEGRATION */
-	if (kbdev->vendor_callbacks->create_context)
-		kbdev->vendor_callbacks->create_context(kctx);
-
-	/* MALI_SEC_INTEGRATION */
-	atomic_set(&kctx->mem_profile_showing_state, 0);
-	init_waitqueue_head(&kctx->mem_profile_wait);
-
 	return kctx;
 
 no_jit:
@@ -331,10 +323,6 @@ void kbase_destroy_context(struct kbase_context *kctx)
 	kbase_mem_pool_group_term(&kctx->mem_pools);
 
 	WARN_ON(atomic_read(&kctx->nonmapped_pages) != 0);
-
-	/* MALI_SEC_INTEGRATION */
-	if (kbdev->vendor_callbacks->destroy_context)
-		kbdev->vendor_callbacks->destroy_context(kctx);
 
 	vfree(kctx);
 

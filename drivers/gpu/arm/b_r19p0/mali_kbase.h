@@ -76,9 +76,6 @@
 #include <trace/events/gpu.h>
 #endif
 
-/* MALI_SEC_INTEGRATION */
-#include <mali_kbase_uku.h>
-
 
 #ifndef u64_to_user_ptr
 /* Introduced in Linux v4.6 */
@@ -334,11 +331,6 @@ int kbase_soft_event_update(struct kbase_context *kctx,
 void kbasep_soft_job_timeout_worker(struct timer_list *timer);
 void kbasep_complete_triggered_soft_events(struct kbase_context *kctx, u64 evt);
 
-/* MALI_SEC_INTEGRATION */
-/* api to be ported per OS, only need to do the raw register access */
-void kbase_os_reg_write(struct kbase_device *kbdev, u16 offset, u32 value);
-u32 kbase_os_reg_read(struct kbase_device *kbdev, u16 offset);
-
 void kbasep_as_do_poke(struct work_struct *work);
 
 /** Returns the name associated with a Mali exception code
@@ -560,11 +552,6 @@ void kbasep_trace_debugfs_init(struct kbase_device *kbdev);
 	kbasep_trace_add(kbdev, KBASE_TRACE_CODE(code), ctx, katom, gpu_addr, \
 			0, 0, 0, info_val)
 
-/* MALI_SEC_INTEGRATION */
-#define KBASE_TRACE_ADD_EXYNOS(kbdev, code, ctx, katom, gpu_addr, info_val)	\
-	kbasep_trace_add(kbdev, KBASE_TRACE_CODE(code), ctx, katom, gpu_addr, \
-			0, 0, 0, info_val)
-
 /** Clear the trace */
 #define KBASE_TRACE_CLEAR(kbdev) \
 	kbasep_trace_clear(kbdev)
@@ -663,18 +650,6 @@ void kbasep_trace_clear(struct kbase_device *kbdev);
 		CSTD_NOP(0);\
 	} while (0)
 
-/* MALI_SEC_INTEGRATION */
-#define KBASE_TRACE_ADD_EXYNOS(kbdev, code, subcode, ctx, katom, val)\
-	do {\
-		CSTD_UNUSED(kbdev);\
-		CSTD_NOP(code);\
-		CSTD_UNUSED(subcode);\
-		CSTD_UNUSED(ctx);\
-		CSTD_UNUSED(katom);\
-		CSTD_UNUSED(val);\
-		CSTD_NOP(0);\
-	} while (0)
-
 #define KBASE_TRACE_CLEAR(kbdev)\
 	do {\
 		CSTD_UNUSED(kbdev);\
@@ -688,9 +663,6 @@ void kbasep_trace_clear(struct kbase_device *kbdev);
 #endif /* KBASE_TRACE_ENABLE */
 /** PRIVATE - do not use directly. Use KBASE_TRACE_DUMP() instead */
 void kbasep_trace_dump(struct kbase_device *kbdev);
-
-/* MALI_SEC_INTEGRATION */
-void gpu_dump_register_hooks(struct kbase_device *kbdev);
 
 #if 0
 

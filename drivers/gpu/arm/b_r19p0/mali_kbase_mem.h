@@ -356,14 +356,6 @@ struct kbase_va_region {
 #define KBASE_REG_ZONE_EXEC_VA           KBASE_REG_ZONE(2)
 #define KBASE_REG_ZONE_EXEC_VA_MAX_PAGES ((1ULL << 32) >> PAGE_SHIFT) /* 4 GB */
 
-/* MALI_SEC_INTEGRATION */
-#ifdef CONFIG_MALI_EXYNOS_SECURE_RENDERING
-#define ION_HPA_DEFAULT_ORDER 4
-#define ION_HPA_DEFAULT_PAGE_ORDER (4 + PAGE_SHIFT)
-#define ION_HPA_DEFAULT_SIZE  (PAGE_SIZE << ION_HPA_DEFAULT_ORDER)
-#define ION_HPA_PAGE_COUNT(len) \
-        (ALIGN(len, ION_HPA_DEFAULT_SIZE) / ION_HPA_DEFAULT_SIZE)
-#endif
 
 	unsigned long flags;
 
@@ -1411,8 +1403,7 @@ static inline void kbase_clear_dma_addr(struct page *p)
  *
  * This function will process a fault on a specific address space
  */
-/* MALI_SEC_INTEGRATION */
-int kbase_mmu_interrupt_process(struct kbase_device *kbdev,
+void kbase_mmu_interrupt_process(struct kbase_device *kbdev,
 		struct kbase_context *kctx, struct kbase_as *as,
 		struct kbase_fault *fault);
 

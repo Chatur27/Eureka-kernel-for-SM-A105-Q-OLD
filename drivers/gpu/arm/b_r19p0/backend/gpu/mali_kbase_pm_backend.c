@@ -63,9 +63,6 @@ int kbase_pm_runtime_init(struct kbase_device *kbdev)
 					callbacks->power_runtime_off_callback;
 		kbdev->pm.backend.callback_power_runtime_idle =
 					callbacks->power_runtime_idle_callback;
-		/* MALI_SEC_INTEGRATION */
-		kbdev->pm.backend.callback_power_dvfs_on =
-					callbacks->power_dvfs_on_callback;
 
 		if (callbacks->power_runtime_init_callback)
 			return callbacks->power_runtime_init_callback(kbdev);
@@ -136,9 +133,6 @@ int kbase_hwaccess_pm_early_init(struct kbase_device *kbdev)
 	kbdev->pm.backend.ca_cores_enabled = ~0ull;
 	kbdev->pm.backend.gpu_powered = false;
 	kbdev->pm.suspending = false;
-	/* MALI_SEC_INTEGRATION */
-	init_waitqueue_head(&kbdev->pm.suspending_wait);
-
 #ifdef CONFIG_MALI_DEBUG
 	kbdev->pm.backend.driver_ready_for_irqs = false;
 #endif /* CONFIG_MALI_DEBUG */
@@ -235,10 +229,6 @@ static void kbase_pm_gpu_poweroff_wait_wq(struct work_struct *data)
 
 	mutex_lock(&js_devdata->runpool_mutex);
 	mutex_lock(&kbdev->pm.lock);
-
-	/* MALI_SEC_INTEGRATION */
-	KBASE_TRACE_ADD(kbdev, KBASE_DEVICE_PM_WAIT_WQ_RUN, NULL, NULL, \
-		backend->poweron_required, backend->poweroff_is_suspend);
 
 	if (!backend->poweron_required) {
 		if (!platform_power_down_only) {
@@ -538,9 +528,6 @@ void kbase_hwaccess_pm_suspend(struct kbase_device *kbdev)
 	mutex_unlock(&js_devdata->runpool_mutex);
 
 	kbase_pm_wait_for_poweroff_complete(kbdev);
-
-	/* MALI_SEC_INTEGRATION */
-	KBASE_TRACE_ADD(kbdev, KBASE_DEVICE_PM_SUSPEND, NULL, NULL, 0u, 0u);
 }
 
 void kbase_hwaccess_pm_resume(struct kbase_device *kbdev)
@@ -552,14 +539,9 @@ void kbase_hwaccess_pm_resume(struct kbase_device *kbdev)
 
 	kbdev->pm.suspending = false;
 	kbase_pm_do_poweron(kbdev, true);
-	/* MALI_SEC_INTEGRATION */
-	wake_up(&kbdev->pm.suspending_wait);
 
 	kbase_backend_timer_resume(kbdev);
 
 	mutex_unlock(&kbdev->pm.lock);
 	mutex_unlock(&js_devdata->runpool_mutex);
-
-	/* MALI_SEC_INTEGRATION */
-	KBASE_TRACE_ADD(kbdev, KBASE_DEVICE_PM_RESUME, NULL, NULL, 0u, 0u);
 }

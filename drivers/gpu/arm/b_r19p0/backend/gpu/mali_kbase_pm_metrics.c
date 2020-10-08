@@ -89,10 +89,6 @@ int kbasep_pm_metrics_init(struct kbase_device *kbdev)
 
 	spin_lock_init(&kbdev->pm.backend.metrics.lock);
 
-	/* MALI_SEC_INTEGRATION */
-	if (kbdev->vendor_callbacks->pm_metrics_init)
-		kbdev->vendor_callbacks->pm_metrics_init(kbdev);
-	else {
 #ifdef CONFIG_MALI_MIDGARD_DVFS
 	kbdev->pm.backend.metrics.timer_active = true;
 	hrtimer_init(&kbdev->pm.backend.metrics.timer, CLOCK_MONOTONIC,
@@ -103,11 +99,6 @@ int kbasep_pm_metrics_init(struct kbase_device *kbdev)
 			HR_TIMER_DELAY_MSEC(kbdev->pm.dvfs_period),
 			HRTIMER_MODE_REL);
 #endif /* CONFIG_MALI_MIDGARD_DVFS */
-	}
-
-	/* MALI_SEC_INTEGRATION */
-	if (kbdev->vendor_callbacks->cl_boost_init)
-		kbdev->vendor_callbacks->cl_boost_init(kbdev);
 
 	return 0;
 }
@@ -127,10 +118,6 @@ void kbasep_pm_metrics_term(struct kbase_device *kbdev)
 
 	hrtimer_cancel(&kbdev->pm.backend.metrics.timer);
 #endif /* CONFIG_MALI_MIDGARD_DVFS */
-
-	/* MALI_SEC_INTEGRATION */
-	if (kbdev->vendor_callbacks->pm_metrics_term)
-		kbdev->vendor_callbacks->pm_metrics_term(kbdev);
 }
 
 KBASE_EXPORT_TEST_API(kbasep_pm_metrics_term);

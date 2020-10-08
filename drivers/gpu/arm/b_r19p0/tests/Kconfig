@@ -19,5 +19,5 @@
 #
 #
 
-source "drivers/gpu/arm/b_r19p0/tests/kutf/Kconfig"
-source "drivers/gpu/arm/b_r19p0/tests/mali_kutf_irq_test/Kconfig"
+source "drivers/gpu/arm/midgard/tests/kutf/Kconfig"
+source "drivers/gpu/arm/midgard/tests/mali_kutf_irq_test/Kconfig"

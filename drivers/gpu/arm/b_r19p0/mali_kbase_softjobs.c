@@ -1541,16 +1541,6 @@ int kbase_process_soft_job(struct kbase_jd_atom *katom)
 
 void kbase_cancel_soft_job(struct kbase_jd_atom *katom)
 {
-	/* MALI_SEC_INTEGRATION */
-	pgd_t *pgd;
-	struct mm_struct *mm = katom->kctx->process_mm;
-
-	pgd = pgd_offset(mm, (unsigned long)katom);
-	if (pgd_none(*pgd) || pgd_bad(*pgd)) {
-		printk("Abnormal katom\n");
-		printk("katom->kctx: 0x%p, katom->kctx->tgid: %d, katom->kctx->process_mm: 0x%p, pgd: 0x%px\n", katom->kctx, katom->kctx->tgid, katom->kctx->process_mm, pgd);
-		return;
-	}
 	switch (katom->core_req & BASE_JD_REQ_SOFT_JOB_TYPE) {
 #if defined(CONFIG_SYNC) || defined(CONFIG_SYNC_FILE)
 	case BASE_JD_REQ_SOFT_FENCE_WAIT:

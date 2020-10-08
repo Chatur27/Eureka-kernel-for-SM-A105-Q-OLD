@@ -39,10 +39,6 @@
 
 #include "mali_kbase_dma_fence.h"
 
-/* MALI_SEC_INTEGRATION */
-#include <linux/smc.h>
-#include "platform/exynos/gpu_integration_defs.h"
-
 #define beenthere(kctx, f, a...)  dev_dbg(kctx->kbdev->dev, "%s:" f, __func__, ##a)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
@@ -1133,10 +1129,6 @@ while (false)
 
 KBASE_EXPORT_TEST_API(kbase_jd_submit);
 
-#if defined(CONFIG_SEC_ABC)
-#include <linux/sti/abc_common.h>
-#endif
-
 void kbase_jd_done_worker(struct work_struct *data)
 {
 	struct kbase_jd_atom *katom = container_of(data, struct kbase_jd_atom, work);
@@ -1196,15 +1188,11 @@ void kbase_jd_done_worker(struct work_struct *data)
 	}
 
 	if ((katom->event_code != BASE_JD_EVENT_DONE) &&
-			(!kbase_ctx_flag(katom->kctx, KCTX_DYING))) {
+			(!kbase_ctx_flag(katom->kctx, KCTX_DYING)))
 		dev_err(kbdev->dev,
 			"t6xx: GPU fault 0x%02lx from job slot %d\n",
 					(unsigned long)katom->event_code,
 								katom->slot_nr);
-#if defined(CONFIG_SEC_ABC)
-		sec_abc_send_event("MODULE=gpu@ERROR=gpu_fault");
-#endif
-	}
 
 	if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_8316))
 		kbase_as_poking_timer_release_atom(kbdev, kctx, katom);
@@ -1525,9 +1513,6 @@ int kbase_jd_init(struct kbase_context *kctx)
 		atomic_set(&kctx->jctx.atoms[i].dma_fence.seqno, 0);
 		INIT_LIST_HEAD(&kctx->jctx.atoms[i].dma_fence.callbacks);
 #endif
-
-		/* MALI_SEC_INTEGRATION */
-		spin_lock_init(&kctx->jctx.atoms[i].fence_lock);
 	}
 
 	mutex_init(&kctx->jctx.lock);

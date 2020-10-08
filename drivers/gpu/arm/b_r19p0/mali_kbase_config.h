@@ -209,11 +209,6 @@ struct kbase_pm_callback_conf {
 	 * suspeneded by runtime PM, else OS error code
 	 */
 	int (*power_runtime_idle_callback)(struct kbase_device *kbdev);
-
-/* MALI_SEC_INTEGRATION */
-	/** Callback for GPU DVFS handler start/stop
-	**/
-	int (*power_dvfs_on_callback)(struct kbase_device *kbdev);
 };
 
 #ifdef CONFIG_OF
