@@ -69,8 +69,8 @@ insert_line /system/init.rc "import /init.spectrum.rc" after "import /prism/etc/
 
 
 ## Copy changelog to internal storage
-cp /tmp/anykernel/tools/a10_changelog.txt /data/media/0/a10_changelog.txt;
-chmod 755 /data/media/0/a10_changelog.txt;
+cp /tmp/anykernel/tools/changelog.txt /data/media/0/changelog.txt;
+chmod 755 /data/media/0/changelog.txt;
 
 umount /system;
 umount /system_root;
@@ -79,7 +79,7 @@ ui_print "- Installation of kernel and spectrum finished";
 ui_print " ";
 
 ui_print "- Full changelog has been copied to your internal";
-ui_print "  storage under the name of a10_changelog";
+ui_print "  storage under the name of changelog.txt";
 ui_print " ";
 
 ui_print "- If you get stuck on A10 logo, force restart your";
