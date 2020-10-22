@@ -19,12 +19,13 @@
 ROOT_DIR=$(pwd)
 # OUT_DIR=$ROOT_DIR/out
 KERNEL_DIR=$ROOT_DIR
-DTB_DIR=$(pwd)/arch/arm64/boot/dts/exynos
-DTBO_DIR=$(pwd)/arch/arm64/boot/dts/exynos/dtbo
+DTB_DIR=./arch/arm64/boot/dts/exynos
+DTBO_DIR=./arch/arm64/boot/dts/exynos/dtbo
 
 # Set custom kernel variables
 PROJECT_NAME="Eureka Kernel"
-JOBS=$(nproc --all)
+CORES=$(nproc --all)
+REV=1.0
 ZIPNAME=Eureka_Rx.x_Axxx_xxxx_x.zip
 DEFAULT_NAME=Eureka_Rx.x_Axxx_P/Q/R
 
@@ -44,10 +45,10 @@ BUILD_START=$(date +"%s")
 
 SM_A105X="Samsung Galaxy A10"
 DEFCONFIG_A105P=a10_defconfig
-DEVICE_A105P=A105P
+DEVICE_A105P=A105
 
 DEFCONFIG_A105Q=a10_00_defconfig
-DEVICE_A105Q=A105Q
+DEVICE_A105Q=A105
 
 SM_A205X="Samsung Galaxy A20"
 DEFCONFIG_A205=exynos7885-a20_defconfig
@@ -103,8 +104,8 @@ CLEAN_SOURCE()
 			echo " Error: make mrproper failed"
 			exit
 	fi
-	rm -rf $DTB_DIR/.*.dtb
-	rm -rf $DTBO_DIR/.*.dtbo
+	rm $DTB_DIR/*.dtb
+	rm $DTBO_DIR/*.dtbo
 	rm -rf kernel_zip/Image
 	rm -rf kernel_zip/dtbo.img
 	sleep 1
@@ -118,9 +119,8 @@ BUILD_KERNEL()
 	export ANDROID_MAJOR_VERSION=$ANDROID
 	export LOCALVERSION=-$VERSION
 	make  $DEFCONFIG
-	make -j$JOBS
-	sleep 1
-	echo "*****************************************************"	
+	make -j$CORES
+	sleep 1	
 }
 
 ZIPPIFY()
@@ -149,6 +149,43 @@ ZIPPIFY()
 	fi
 }
 
+PROCESSES()
+{
+	# Allow user to choose how many cores to be taken by compiler
+	echo "Your system has $CORES cores."
+	read -p "Please enter how many cores to be used by compiler (Leave blank to use all cores) : " cores;
+	if [ "${cores}" == "" ]; then
+		echo " "
+		echo "Using all $CORES cores for compilation"
+		sleep 2
+	else 
+		echo "Using $cores cores for compilation "
+		CORES=$cores
+		sleep 2
+	fi
+}
+
+ENTER_VERSION()
+{
+	# Enter kernel revision for this build.
+	read -p "Please type kernel version without R (E.g: 4.7) : " rev;
+	if [ "${rev}" == "" ]; then
+		echo "Using default $REV as version"
+	else
+		REV=$rev
+		echo " "
+		echo "     Version = $REV"
+	fi
+	sleep 2
+}
+
+RENAME()
+{
+	# Give proper name to kernel and zip name
+	VERSION="Eureka_R"$REV"_"$DEVICE_Axxx"_"P/Q/R
+	ZIPNAME="Eureka_R"$REV"_"$DEVICE_Axxx"_"xxxx"_"$ANDROID".zip"
+}
+
 DISPLAY_ELAPSED_TIME()
 {
 	# Find out how much time build has taken
@@ -162,7 +199,7 @@ DISPLAY_ELAPSED_TIME()
 			exit
 	fi
 	
-	echo -e " Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds $reset"
+	echo -e "                     Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds $reset"
 	sleep 1
 }
 
@@ -223,6 +260,10 @@ Please select your Android Version: '
 ###################### Script starts here #######################
 
 clear
+PROCESSES
+clear
+ENTER_VERSION
+clear
 echo "******************************************************"
 echo "*             $PROJECT_NAME Build Script             *"
 echo "*                  Developer: Chatur                 *"
@@ -232,7 +273,8 @@ echo "*          Compiling kernel using Linaro-GCC         *"
 echo "*                                                    *"
 echo "* Some information about parameters set:             *"
 echo -e "*  > Architecture: $ARCH                             *"
-echo    "*  > Jobs: $JOBS                                         *"
+echo    "*  > Jobs: $CORES                                         *"
+echo    "*  > Revision for this build: R$REV                   *"
 echo    "*  > Kernel Name Template: $VERSION    *"
 echo    "*  > Build user: $KBUILD_BUILD_USER                              *"
 echo    "*  > Build machine: $KBUILD_BUILD_HOST                       *"
@@ -257,6 +299,7 @@ do
 		OS_MENU
 		echo " "
 		CLEAN_SOURCE
+		echo " "
 		echo "        Starting compilation of $DEVICE_A105Q kernel"
 		DEVICE_Axxx=$DEVICE_A105Q
 		if [ $AND_VER -eq 10 ]
@@ -271,6 +314,10 @@ do
 			echo "       Android 11 kernel is not yet released.."
 			echo " "		
 		fi
+		RENAME
+		sleep 2
+		echo " "
+		sleep 2		
 		BUILD_KERNEL
 		echo " "
 		sleep 2
@@ -280,11 +327,11 @@ do
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "            $DEVICE_Axxx kernel build finished.      "
-		echo "                                                     "
-		echo "*****************************************************"
+		echo "                 *****************************************************"
+		echo "*****************                                                     *****************"
+		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "*****************                                                     *****************"
+		echo "                 *****************************************************"
 		break
 		;;
         "$SM_A205X")
@@ -294,6 +341,7 @@ do
 		OS_MENU
 		echo " "
 		CLEAN_SOURCE
+		echo " "
 		echo "        Starting compilation of $DEVICE_A205 kernel"
 		DEVICE_Axxx=$DEVICE_A205
 		if [ $AND_VER -eq 10 ]
@@ -308,6 +356,10 @@ do
 			echo "       Android 11 kernel is not yet released.."
 			echo " "		
 		fi
+		RENAME
+		sleep 2
+		echo " "
+		sleep 2		
 		BUILD_KERNEL
 		echo " "
 		sleep 2
@@ -317,11 +369,11 @@ do
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "            $DEVICE_Axxx kernel build finished.      "
-		echo "                                                     "
-		echo "*****************************************************"
+		echo "                 *****************************************************"
+		echo "*****************                                                     *****************"
+		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "*****************                                                     *****************"
+		echo "                 *****************************************************"
 		break
 		;;
 	"$SM_A305X")
@@ -331,6 +383,7 @@ do
 		OS_MENU
 		echo " "
 		CLEAN_SOURCE
+		echo " "
 		echo "        Starting compilation of $DEVICE_A305 kernel"
 		DEVICE_Axxx=$DEVICE_A305
 		if [ $AND_VER -eq 10 ]
@@ -345,6 +398,10 @@ do
 			echo "       Android 11 kernel is not yet released.."
 			echo " "		
 		fi
+		RENAME
+		sleep 2
+		echo " "
+		sleep 2		
 		BUILD_KERNEL
 		echo " "
 		sleep 2
@@ -354,11 +411,11 @@ do
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "            $DEVICE_Axxx kernel build finished.      "
-		echo "                                                     "
-		echo "*****************************************************"
+		echo "                 *****************************************************"
+		echo "*****************                                                     *****************"
+		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "*****************                                                     *****************"
+		echo "                 *****************************************************"
 		break
 		;;
 	"$SM_A307X")
@@ -368,6 +425,7 @@ do
 		OS_MENU
 		echo " "
 		CLEAN_SOURCE
+		echo " "
 		echo "        Starting compilation of $DEVICE_A307 kernel"
 		DEVICE_Axxx=$DEVICE_A307
 		if [ $AND_VER -eq 10 ]
@@ -382,6 +440,10 @@ do
 			echo "       Android 11 kernel is not yet released.."
 			echo " "		
 		fi
+		RENAME
+		sleep 2
+		echo " "
+		sleep 2		
 		BUILD_KERNEL
 		echo " "
 		sleep 2
@@ -391,11 +453,11 @@ do
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "            $DEVICE_Axxx kernel build finished.      "
-		echo "                                                     "
-		echo "*****************************************************"
+		echo "                 *****************************************************"
+		echo "*****************                                                     *****************"
+		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "*****************                                                     *****************"
+		echo "                 *****************************************************"
 		break
 		;;
 	"$SM_A405X")
@@ -405,6 +467,7 @@ do
 		OS_MENU
 		echo " "
 		CLEAN_SOURCE
+		echo " "
 		echo "        Starting compilation of $DEVICE_A405 kernel"
 		DEVICE_Axxx=$DEVICE_A405
 		if [ $AND_VER -eq 10 ]
@@ -419,6 +482,10 @@ do
 			echo "       Android 11 kernel is not yet released.."
 			echo " "		
 		fi
+		RENAME
+		sleep 2
+		echo " "
+		sleep 2		
 		BUILD_KERNEL
 		echo " "
 		sleep 2
@@ -428,11 +495,11 @@ do
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "            $DEVICE_Axxx kernel build finished.      "
-		echo "                                                     "
-		echo "*****************************************************"
+		echo "                 *****************************************************"
+		echo "*****************                                                     *****************"
+		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "*****************                                                     *****************"
+		echo "                 *****************************************************"
 		break
 		;;
 	"$SM_A505X")
@@ -442,6 +509,7 @@ do
 		OS_MENU
 		echo " "
 		CLEAN_SOURCE
+		echo " "
 		echo "        Starting compilation of $DEVICE_A505 kernel"
 		DEVICE_Axxx=$DEVICE_A505
 		if [ $AND_VER -eq 10 ]
@@ -456,6 +524,10 @@ do
 			echo "       Android 11 kernel is not yet released.."
 			echo " "		
 		fi
+		RENAME
+		sleep 2
+		echo " "
+		sleep 2		
 		BUILD_KERNEL
 		echo " "
 		sleep 2
@@ -465,11 +537,11 @@ do
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "            $DEVICE_Axxx kernel build finished.      "
-		echo "                                                     "
-		echo "*****************************************************"
+		echo "                 *****************************************************"
+		echo "*****************                                                     *****************"
+		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "*****************                                                     *****************"
+		echo "                 *****************************************************"
 		break
 		;;
 	"Exit")
