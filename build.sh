@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Custom build script for Eureka kernels by Chatur27 and Gabriel260 @Github -2020
+# Custom build script for Eureka kernels by Chatur27 and Gabriel260 @Github - 2020
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,55 +22,56 @@ KERNEL_DIR=$ROOT_DIR
 DTB_DIR=./arch/arm64/boot/dts/exynos
 DTBO_DIR=./arch/arm64/boot/dts/exynos/dtbo
 
-# Set custom kernel variables
+# Set default kernel variables
 PROJECT_NAME="Eureka Kernel"
 CORES=$(nproc --all)
+SELINUX_STATUS=""
+TYPE="oneui"
 REV=1.0
-ZIPNAME=Eureka_Rx.x_Axxx_xxxx_x.zip
+USER=Chatur
+ZIPNAME=Eureka_Rx.x_Axxx_xxxx_x_x.zip
 DEFAULT_NAME=Eureka_Rx.x_Axxx_P/Q/R
 
 # Export commands
-export KBUILD_BUILD_USER=Chatur
+export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=Eureka.org
 export VERSION=$DEFAULT_NAME
 export ARCH=arm64
 export CROSS_COMPILE=$(pwd)/toolchain/bin/aarch64-linux-gnu-
 export CROSS_COMPILE_ARM32=$(pwd)/toolchain/bin/arm-linux-gnueabi-
 
-# Get date
+# Get date and time
 DATE=$(date +"%m-%d-%y")
 BUILD_START=$(date +"%s")
 
 ####################### Devices List #########################
 
 SM_A105X="Samsung Galaxy A10"
-DEFCONFIG_A105P=a10_defconfig
-DEVICE_A105P=A105
-
-DEFCONFIG_A105Q=a10_00_defconfig
-DEVICE_A105Q=A105
+DEFCONFIG_A105=exynos7885-a10_"$TYPE"_"$SELINUX_STATUS"defconfig
+DEVICE_A105=A105
 
 SM_A205X="Samsung Galaxy A20"
-DEFCONFIG_A205=exynos7885-a20_defconfig
+DEFCONFIG_A205=exynos7885-a20_"$TYPE"_"$SELINUX_STATUS"defconfig
 DEVICE_A205=A205
 
 SM_A305X="Samsung Galaxy A30"
-DEFCONFIG_A305=exynos7885-a30_defconfig
+DEFCONFIG_A305=exynos7885-a30_"$TYPE"_"$SELINUX_STATUS"defconfig
 DEVICE_A305=A305
 
 SM_A307X="Samsung Galaxy A30s"
-DEFCONFIG_A307=exynos7885-a30s_defconfig
+DEFCONFIG_A307=exynos7885-a30s_"$TYPE"_"$SELINUX_STATUS"defconfig
 DEVICE_A307=A307
 
 SM_A405X="Samsung Galaxy A40"
-DEFCONFIG_A405=exynos7885-a40_defconfig
+DEFCONFIG_A405=exynos7885-a40_"$TYPE"_"$SELINUX_STATUS"defconfig
 DEVICE_A405=A405
 
 SM_A505X="Samsung Galaxy A50"
-DEFCONFIG_A505=exynos9610-a50_defconfig
+DEFCONFIG_A505=exynos9610-a50_"$TYPE"_"$SELINUX_STATUS"defconfig
 DEVICE_A505=A505
 
 ################################################################
+
 
 ######################## Android OS list #######################
 
@@ -79,6 +80,9 @@ androidq="Android 10 (Q)"
 androidr="Android 11 (R)"
 
 ################################################################
+
+
+
 
 
 ################### Executable functions #######################
@@ -104,12 +108,17 @@ CLEAN_SOURCE()
 			echo " Error: make mrproper failed"
 			exit
 	fi
-	rm $DTB_DIR/*.dtb
-	rm $DTBO_DIR/*.dtbo
-	rm -rf kernel_zip/Image
-	rm -rf kernel_zip/dtbo.img
-	sleep 1
-	echo "*****************************************************"	
+	
+	if [ -e "kernel_zip/Image" ]
+	then
+	  {
+	     rm $DTB_DIR/*.dtb
+	     rm $DTBO_DIR/*.dtbo
+	     rm -rf kernel_zip/Image
+	     rm -rf kernel_zip/dtbo.img
+	  }
+	fi
+	sleep 1	
 }
 
 BUILD_KERNEL()
@@ -131,7 +140,9 @@ ZIPPIFY()
 	then
 	{
 		echo -e "*****************************************************"
+		echo -e "                                                     "
 		echo -e "             Building Eureka flashable zip           "
+		echo -e "                                                     "
 		echo -e "*****************************************************"
 		
 		# Copy Image and dtbo.img to kernel directory
@@ -159,6 +170,7 @@ PROCESSES()
 		echo "Using all $CORES cores for compilation"
 		sleep 2
 	else 
+		echo " "
 		echo "Using $cores cores for compilation "
 		CORES=$cores
 		sleep 2
@@ -170,7 +182,8 @@ ENTER_VERSION()
 	# Enter kernel revision for this build.
 	read -p "Please type kernel version without R (E.g: 4.7) : " rev;
 	if [ "${rev}" == "" ]; then
-		echo "Using default $REV as version"
+		echo " "
+		echo "     Using '$REV' as version"
 	else
 		REV=$rev
 		echo " "
@@ -179,11 +192,147 @@ ENTER_VERSION()
 	sleep 2
 }
 
+USER()
+{
+	# Setup KBUILD_BUILD_USER
+	echo "Current build username is $USER"
+	echo " "
+	read -p "Please type build_user (E.g: Chatur) : " user;
+	if [ "${user}" == "" ]; then
+		echo " "
+		echo "     Using '$USER' as Username"
+	else
+		export KBUILD_BUILD_USER=$user
+		echo " "
+		echo "     build_user = $user"
+	fi
+	sleep 2
+}
+
 RENAME()
 {
 	# Give proper name to kernel and zip name
 	VERSION="Eureka_R"$REV"_"$DEVICE_Axxx"_"P/Q/R
-	ZIPNAME="Eureka_R"$REV"_"$DEVICE_Axxx"_"xxxx"_"$ANDROID".zip"
+	ZIPNAME="Eureka_R"$REV"_"$DEVICE_Axxx"_"$TYPE"_"$SELINUX_STATUS""$ANDROID".zip"
+}
+
+function permissive() 
+{
+export SELINUX_B=permissive
+echo "Selected GSI and custom roms"
+sleep 2
+}
+
+function enforcing() 
+{
+export SELINUX_B=enforcing
+echo "Selected OneUI"
+sleep 2
+}
+
+SELINUX()
+{
+	# setup selinux for differents firmwares
+	echo -e "***************************************************************";
+	echo "             Select which version you wish to build               ";
+	echo -e "***************************************************************";
+	echo "Available versions:";
+	echo "  1. Build OneUI version of Eureka with ENFORCING SElinux";
+	echo " "
+	echo "  2. Build GSI version of Eureka with PERMISSIVE SElinux";
+	echo " "
+	echo "  3. Build GSI version of Eureka with ENFORCING SElinux";
+	echo " "
+	echo "Leave empty to exit this script";
+	echo " "
+	echo " "
+	read -n 1 -p "Select your choice: " -s choice;
+	case ${choice} in
+		1)
+		   {
+			export SELINUX_B=enforcing
+			export SELINUX_STATUS=""
+			export TYPE="oneui"
+		   };;
+		2)
+		   {
+		   	export SELINUX_B=permissive
+		   	export SELINUX_STATUS="$SELINUX_B"_
+		   	export TYPE="gsi"
+		   };;
+		3)
+		   {
+			export SELINUX_B=enforcing
+			export SELINUX_STATUS="$SELINUX_B"_
+			export TYPE="gsi"
+		   };;
+		*)
+		   {
+			echo
+			echo "Invalid choice entered. Exiting..."
+			sleep 2
+			exit 1
+		   };;
+	esac
+
+	# setup selinux files
+	if [ ! -d security/selinux ]; then
+		mkdir security/selinux;
+	fi;
+
+		if [ ${SELINUX_B} == "permissive" ]
+		then
+		echo "Using permissive selinux"
+			cp -rf $(pwd)/build_files/gsi/selinux security/
+		elif [ ${SELINUX_B} == "enforcing" ]
+		then
+		echo "Using enforcing selinux"
+			cp -rf $(pwd)/build_files/oneui/selinux security/
+		fi
+	sleep 2
+}
+
+MTP_FIX()
+{
+	# This is needed for GSI version only !!
+	if [ ${TYPE} == "gsi" ]
+	then
+	{
+	   echo " "
+	   echo "       Setting up MTP for GSI.."
+	   
+	   if [ ! -d drivers/usb/gadget ]; then
+		mkdir drivers/usb/gadget;
+	   fi;
+	   cp -rf $(pwd)/build_files/gsi/gadget drivers/usb/
+	   sleep 2
+	}
+	elif [ ${TYPE} == "oneui" ]
+	then
+	{
+	   if [ ! -d drivers/usb/gadget ]; then
+		mkdir drivers/usb/gadget;
+	   fi;
+	   cp -rf $(pwd)/build_files/oneui/gadget drivers/usb/
+	}
+	fi
+}
+
+ONEUI_STATE()
+{	
+	# Always return gadget and selinux folders to OneUI state else git will mark those folders as changed
+	cp -rf $(pwd)/build_files/oneui/gadget drivers/usb/
+	cp -rf $(pwd)/build_files/oneui/selinux security/
+}
+
+UPDATE_BUILD_FILES()
+{
+	# At start of build script, gadget and selinux folders are always in OneUI state. So if ever,
+	# those folders are newer than the one in build_files/oneui/ folder, our build_files/oneui/
+	# need to be updated else drivers/usb/gadget and security/security will be overwritten by
+	# old files found in build_files/oneui/gadget.
+	cp -rf $(pwd)/drivers/usb/gadget build_files/oneui/
+	cp -rf $(pwd)/security/selinux build_files/oneui/
 }
 
 DISPLAY_ELAPSED_TIME()
@@ -259,10 +408,19 @@ Please select your Android Version: '
 
 ###################### Script starts here #######################
 
+CLEAN_SOURCE
 clear
 PROCESSES
 clear
 ENTER_VERSION
+clear
+USER
+clear
+UPDATE_BUILD_FILES
+clear
+SELINUX
+clear
+MTP_FIX
 clear
 echo "******************************************************"
 echo "*             $PROJECT_NAME Build Script             *"
@@ -275,6 +433,8 @@ echo "* Some information about parameters set:             *"
 echo -e "*  > Architecture: $ARCH                             *"
 echo    "*  > Jobs: $CORES                                         *"
 echo    "*  > Revision for this build: R$REV                   *"
+echo    "*  > Version chosen: $TYPE                           *"
+echo    "*  > SElinux Status: $SELINUX_B                       *"
 echo    "*  > Kernel Name Template: $VERSION    *"
 echo    "*  > Build user: $KBUILD_BUILD_USER                              *"
 echo    "*  > Build machine: $KBUILD_BUILD_HOST                       *"
@@ -298,38 +458,32 @@ do
         	echo " "
 		OS_MENU
 		echo " "
-		CLEAN_SOURCE
-		echo " "
-		echo "        Starting compilation of $DEVICE_A105Q kernel"
-		DEVICE_Axxx=$DEVICE_A105Q
-		if [ $AND_VER -eq 10 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A105Q
-		elif [ $AND_VER -eq 9 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A105P
-		elif [ $AND_VER -eq 11 ]
-		then
-			echo " "
-			echo "       Android 11 kernel is not yet released.."
-			echo " "		
-		fi
+		DEVICE_Axxx=$DEVICE_A105
+		DEFCONFIG=exynos7885-a10_"$TYPE"_"$SELINUX_STATUS"defconfig
+		echo "*****************************************************"
+		echo "                                                     "
+		echo "        Starting compilation of $DEVICE_Axxx kernel  "
+		echo "                                                     "
+		echo " Defconfig = $DEFCONFIG                              "
+		echo "                                                     "
+		echo "*****************************************************"
 		RENAME
 		sleep 2
-		echo " "
-		sleep 2		
+		echo " "	
 		BUILD_KERNEL
 		echo " "
 		sleep 2
 		ZIPPIFY
 		sleep 2
 		CLEAN_SOURCE
+		sleep 1
+		ONEUI_STATE
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
 		echo "                 *****************************************************"
 		echo "*****************                                                     *****************"
-		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
 		echo "*****************                                                     *****************"
 		echo "                 *****************************************************"
 		break
@@ -340,38 +494,32 @@ do
         	echo " "
 		OS_MENU
 		echo " "
-		CLEAN_SOURCE
-		echo " "
-		echo "        Starting compilation of $DEVICE_A205 kernel"
 		DEVICE_Axxx=$DEVICE_A205
-		if [ $AND_VER -eq 10 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A205
-		elif [ $AND_VER -eq 9 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A205
-		elif [ $AND_VER -eq 11 ]
-		then
-			echo " "
-			echo "       Android 11 kernel is not yet released.."
-			echo " "		
-		fi
+		DEFCONFIG=exynos7885-a20_"$TYPE"_"$SELINUX_STATUS"defconfig
+		echo "*****************************************************"
+		echo "                                                     "
+		echo "        Starting compilation of $DEVICE_Axxx kernel  "
+		echo "                                                     "
+		echo " Defconfig = $DEFCONFIG                              "
+		echo "                                                     "
+		echo "*****************************************************"
 		RENAME
 		sleep 2
-		echo " "
-		sleep 2		
+		echo " "	
 		BUILD_KERNEL
 		echo " "
 		sleep 2
 		ZIPPIFY
 		sleep 2
 		CLEAN_SOURCE
+		sleep 1
+		ONEUI_STATE
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
 		echo "                 *****************************************************"
 		echo "*****************                                                     *****************"
-		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
 		echo "*****************                                                     *****************"
 		echo "                 *****************************************************"
 		break
@@ -382,38 +530,32 @@ do
         	echo " "
 		OS_MENU
 		echo " "
-		CLEAN_SOURCE
-		echo " "
-		echo "        Starting compilation of $DEVICE_A305 kernel"
 		DEVICE_Axxx=$DEVICE_A305
-		if [ $AND_VER -eq 10 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A305
-		elif [ $AND_VER -eq 9 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A305
-		elif [ $AND_VER -eq 11 ]
-		then
-			echo " "
-			echo "       Android 11 kernel is not yet released.."
-			echo " "		
-		fi
+		DEFCONFIG=exynos7885-a30_"$TYPE"_"$SELINUX_STATUS"defconfig
+		echo "*****************************************************"
+		echo "                                                     "
+		echo "        Starting compilation of $DEVICE_Axxx kernel  "
+		echo "                                                     "
+		echo " Defconfig = $DEFCONFIG                              "
+		echo "                                                     "
+		echo "*****************************************************"
 		RENAME
 		sleep 2
-		echo " "
-		sleep 2		
+		echo " "	
 		BUILD_KERNEL
 		echo " "
 		sleep 2
 		ZIPPIFY
 		sleep 2
 		CLEAN_SOURCE
+		sleep 1
+		ONEUI_STATE
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
 		echo "                 *****************************************************"
 		echo "*****************                                                     *****************"
-		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
 		echo "*****************                                                     *****************"
 		echo "                 *****************************************************"
 		break
@@ -424,38 +566,32 @@ do
         	echo " "
 		OS_MENU
 		echo " "
-		CLEAN_SOURCE
-		echo " "
-		echo "        Starting compilation of $DEVICE_A307 kernel"
 		DEVICE_Axxx=$DEVICE_A307
-		if [ $AND_VER -eq 10 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A307
-		elif [ $AND_VER -eq 9 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A307
-		elif [ $AND_VER -eq 11 ]
-		then
-			echo " "
-			echo "       Android 11 kernel is not yet released.."
-			echo " "		
-		fi
+		DEFCONFIG=exynos7885-a30s_"$TYPE"_"$SELINUX_STATUS"defconfig
+		echo "*****************************************************"
+		echo "                                                     "
+		echo "        Starting compilation of $DEVICE_Axxx kernel  "
+		echo "                                                     "
+		echo " Defconfig = $DEFCONFIG                              "
+		echo "                                                     "
+		echo "*****************************************************"
 		RENAME
 		sleep 2
-		echo " "
-		sleep 2		
+		echo " "	
 		BUILD_KERNEL
 		echo " "
 		sleep 2
 		ZIPPIFY
 		sleep 2
 		CLEAN_SOURCE
+		sleep 1
+		ONEUI_STATE
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
 		echo "                 *****************************************************"
 		echo "*****************                                                     *****************"
-		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
 		echo "*****************                                                     *****************"
 		echo "                 *****************************************************"
 		break
@@ -466,38 +602,32 @@ do
         	echo " "
 		OS_MENU
 		echo " "
-		CLEAN_SOURCE
-		echo " "
-		echo "        Starting compilation of $DEVICE_A405 kernel"
 		DEVICE_Axxx=$DEVICE_A405
-		if [ $AND_VER -eq 10 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A405
-		elif [ $AND_VER -eq 9 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A405
-		elif [ $AND_VER -eq 11 ]
-		then
-			echo " "
-			echo "       Android 11 kernel is not yet released.."
-			echo " "		
-		fi
+		DEFCONFIG=exynos7885-a40_"$TYPE"_"$SELINUX_STATUS"defconfig
+		echo "*****************************************************"
+		echo "                                                     "
+		echo "        Starting compilation of $DEVICE_Axxx kernel  "
+		echo "                                                     "
+		echo " Defconfig = $DEFCONFIG                              "
+		echo "                                                     "
+		echo "*****************************************************"
 		RENAME
 		sleep 2
-		echo " "
-		sleep 2		
+		echo " "	
 		BUILD_KERNEL
 		echo " "
 		sleep 2
 		ZIPPIFY
 		sleep 2
 		CLEAN_SOURCE
+		sleep 1
+		ONEUI_STATE
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
 		echo "                 *****************************************************"
 		echo "*****************                                                     *****************"
-		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
 		echo "*****************                                                     *****************"
 		echo "                 *****************************************************"
 		break
@@ -508,38 +638,32 @@ do
         	echo " "
 		OS_MENU
 		echo " "
-		CLEAN_SOURCE
-		echo " "
-		echo "        Starting compilation of $DEVICE_A505 kernel"
 		DEVICE_Axxx=$DEVICE_A505
-		if [ $AND_VER -eq 10 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A505
-		elif [ $AND_VER -eq 9 ]
-		then
-			DEFCONFIG=$DEFCONFIG_A505
-		elif [ $AND_VER -eq 11 ]
-		then
-			echo " "
-			echo "       Android 11 kernel is not yet released.."
-			echo " "		
-		fi
+		DEFCONFIG=exynos9610-a50_"$TYPE"_"$SELINUX_STATUS"defconfig
+		echo "*****************************************************"
+		echo "                                                     "
+		echo "        Starting compilation of $DEVICE_Axxx kernel  "
+		echo "                                                     "
+		echo " Defconfig = $DEFCONFIG                              "
+		echo "                                                     "
+		echo "*****************************************************"
 		RENAME
 		sleep 2
-		echo " "
-		sleep 2		
+		echo " "	
 		BUILD_KERNEL
 		echo " "
 		sleep 2
 		ZIPPIFY
 		sleep 2
 		CLEAN_SOURCE
+		sleep 1
+		ONEUI_STATE
 		echo " "
 		DISPLAY_ELAPSED_TIME
 		echo " "
 		echo "                 *****************************************************"
 		echo "*****************                                                     *****************"
-		echo "*                      $DEVICE_Axxx kernel for Android $AND_VER build finished                      *"
+		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
 		echo "*****************                                                     *****************"
 		echo "                 *****************************************************"
 		break
