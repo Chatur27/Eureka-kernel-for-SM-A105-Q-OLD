@@ -31,6 +31,8 @@ REV=1.0
 USER=Chatur
 ZIPNAME=Eureka_Rx.x_Axxx_xxxx_x_x.zip
 DEFAULT_NAME=Eureka_Rx.x_Axxx_P/Q/R
+AROMA_DIR="oneui"
+AROMA_ZIP="oneui.zip"
 
 # Export commands
 export KBUILD_BUILD_USER=$USER
@@ -109,13 +111,22 @@ CLEAN_SOURCE()
 			exit
 	fi
 	
-	if [ -e "kernel_zip/Image" ]
+	if [ -e "kernel_zip/anykernel/Image" ]
 	then
 	  {
 	     rm $DTB_DIR/*.dtb
 	     rm $DTBO_DIR/*.dtbo
-	     rm -rf kernel_zip/Image
-	     rm -rf kernel_zip/dtbo.img
+	     rm -rf kernel_zip/anykernel/Image
+	     rm -rf kernel_zip/anykernel/dtbo.img
+	  }
+	fi
+	
+	if [ -e "kernel_zip/aroma/aroma_files/$AROMA_DIR/Image" ]
+	then
+	  {
+	     rm -rf kernel_zip/aroma/aroma_files/$AROMA_DIR/Image
+	     rm -rf kernel_zip/aroma/aroma_files/$AROMA_DIR/$AROMA_ZIP
+	     rm -rf kernel_zip/aroma/dtbo/main/dtbo.img
 	  }
 	fi
 	sleep 1	
@@ -141,25 +152,85 @@ ZIPPIFY()
 	{
 		echo -e "*****************************************************"
 		echo -e "                                                     "
-		echo -e "             Building Eureka flashable zip           "
+		echo -e "       Building Eureka anykernel flashable zip       "
 		echo -e "                                                     "
 		echo -e "*****************************************************"
 		
-		# Copy Image and dtbo.img to kernel directory
-		cp -f arch/$ARCH/boot/Image kernel_zip/Image
-		cp -f arch/$ARCH/boot/dtbo.img kernel_zip/dtbo.img
+		# Copy Image and dtbo.img to anykernel directory
+		cp -f arch/$ARCH/boot/Image kernel_zip/anykernel/Image
+		cp -f arch/$ARCH/boot/dtbo.img kernel_zip/anykernel/dtbo.img
 		
-		# Change into kernel directory
-		cd kernel_zip
+		# Go to anykernel directory
+		cd kernel_zip/anykernel
 		zip -r9 $ZIPNAME META-INF modules patch ramdisk tools anykernel.sh Image dtbo.img version
 		chmod 0777 $ZIPNAME
 		# Change back into kernel source directory
 		cd ..
-		sleep 2
+		sleep 1
+		cd ..
+		sleep 1
 	}
 	fi
 }
 
+AROMA_ZIP()
+{
+	# Make Eureka Aroma zip
+	
+	if [ -e "arch/$ARCH/boot/Image" ]
+	then
+	{
+		echo -e "*****************************************************"
+		echo -e "                                                     "
+		echo -e "         Building Eureka Aroma flashable zip         "
+		echo -e "                                                     "
+		echo -e "*****************************************************"
+		
+		# Copy Image and dtbo.img to aroma directory
+		cp -f arch/$ARCH/boot/dtbo.img kernel_zip/aroma/dtbo/main/dtbo.img
+		if [ "${TYPE}" == "oneui" ];
+		then                     
+		  {
+		      AROMA_DIR="oneui"
+		      AROMA_ZIP="oneui.zip"
+		  }
+		elif [ "${TYPE}" == "gsi" ];
+		then
+		  if [ "${SELINUX_B}" == "enforcing" ];
+		  then
+		     {
+		         AROMA_DIR="gsi_enf"
+		         AROMA_ZIP="gsi_enf.zip"
+		     }
+		  elif [ "${SELINUX_B}" == "permissive" ];
+		  then
+		     {
+		         AROMA_DIR="gsi_perm"
+		         AROMA_ZIP="gsi_perm.zip"
+		     }
+		   fi
+		fi
+		
+		echo " "
+		echo " Starting process for building Aroma zip for "$AROMA_DIR" "
+		echo " "
+		cp -f arch/$ARCH/boot/Image kernel_zip/aroma/aroma_files/$AROMA_DIR/Image
+		cd kernel_zip/aroma/aroma_files/$AROMA_DIR
+		zip -r9 $AROMA_ZIP META-INF modules patch ramdisk tools anykernel.sh Image version
+		cd ..
+		sleep 1
+		cd ..
+		cp -f aroma_files/$AROMA_DIR/$AROMA_ZIP kernel/$AROMA_ZIP
+		chmod 0777 kernel/$AROMA_ZIP
+		
+		zip -r9 Aroma_R"$REV"_"$DEVICE_Axxx".zip dtbo kernel magisk META-INF spectrum
+		chmod 0777 Aroma_R"$REV"_"$DEVICE_Axxx".zip
+		cd ..
+		sleep 1
+		cd ..
+	}
+	fi
+}
 PROCESSES()
 {
 	# Allow user to choose how many cores to be taken by compiler
@@ -237,6 +308,7 @@ SELINUX()
 	echo "             Select which version you wish to build               ";
 	echo -e "***************************************************************";
 	echo "Available versions:";
+	echo " "
 	echo "  1. Build OneUI version of Eureka with ENFORCING SElinux";
 	echo " "
 	echo "  2. Build GSI version of Eureka with PERMISSIVE SElinux";
@@ -352,6 +424,38 @@ DISPLAY_ELAPSED_TIME()
 	sleep 1
 }
 
+COMMON_STEPS()
+{
+	echo "*****************************************************"
+	echo "                                                     "
+	echo "        Starting compilation of $DEVICE_Axxx kernel  "
+	echo "                                                     "
+	echo " Defconfig = $DEFCONFIG                              "
+	echo "                                                     "
+	echo "*****************************************************"
+	RENAME
+	sleep 1
+	echo " "	
+	BUILD_KERNEL
+	echo " "
+	sleep 1
+	ZIPPIFY
+	sleep 1
+	AROMA_ZIP
+	sleep 1
+	CLEAN_SOURCE
+	sleep 1
+	ONEUI_STATE
+	echo " "
+	DISPLAY_ELAPSED_TIME
+	echo " "
+	echo "                 *****************************************************"
+	echo "*****************                                                     *****************"
+	echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
+	echo "*****************                                                     *****************"
+	echo "                 *****************************************************"
+}
+
 OS_MENU()
 {
 	# Give the choice to choose Android Version
@@ -460,32 +564,7 @@ do
 		echo " "
 		DEVICE_Axxx=$DEVICE_A105
 		DEFCONFIG=exynos7885-a10_"$TYPE"_"$SELINUX_STATUS"defconfig
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "        Starting compilation of $DEVICE_Axxx kernel  "
-		echo "                                                     "
-		echo " Defconfig = $DEFCONFIG                              "
-		echo "                                                     "
-		echo "*****************************************************"
-		RENAME
-		sleep 2
-		echo " "	
-		BUILD_KERNEL
-		echo " "
-		sleep 2
-		ZIPPIFY
-		sleep 2
-		CLEAN_SOURCE
-		sleep 1
-		ONEUI_STATE
-		echo " "
-		DISPLAY_ELAPSED_TIME
-		echo " "
-		echo "                 *****************************************************"
-		echo "*****************                                                     *****************"
-		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
-		echo "*****************                                                     *****************"
-		echo "                 *****************************************************"
+		COMMON_STEPS
 		break
 		;;
         "$SM_A205X")
@@ -496,32 +575,7 @@ do
 		echo " "
 		DEVICE_Axxx=$DEVICE_A205
 		DEFCONFIG=exynos7885-a20_"$TYPE"_"$SELINUX_STATUS"defconfig
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "        Starting compilation of $DEVICE_Axxx kernel  "
-		echo "                                                     "
-		echo " Defconfig = $DEFCONFIG                              "
-		echo "                                                     "
-		echo "*****************************************************"
-		RENAME
-		sleep 2
-		echo " "	
-		BUILD_KERNEL
-		echo " "
-		sleep 2
-		ZIPPIFY
-		sleep 2
-		CLEAN_SOURCE
-		sleep 1
-		ONEUI_STATE
-		echo " "
-		DISPLAY_ELAPSED_TIME
-		echo " "
-		echo "                 *****************************************************"
-		echo "*****************                                                     *****************"
-		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
-		echo "*****************                                                     *****************"
-		echo "                 *****************************************************"
+		COMMON_STEPS
 		break
 		;;
 	"$SM_A305X")
@@ -532,32 +586,7 @@ do
 		echo " "
 		DEVICE_Axxx=$DEVICE_A305
 		DEFCONFIG=exynos7885-a30_"$TYPE"_"$SELINUX_STATUS"defconfig
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "        Starting compilation of $DEVICE_Axxx kernel  "
-		echo "                                                     "
-		echo " Defconfig = $DEFCONFIG                              "
-		echo "                                                     "
-		echo "*****************************************************"
-		RENAME
-		sleep 2
-		echo " "	
-		BUILD_KERNEL
-		echo " "
-		sleep 2
-		ZIPPIFY
-		sleep 2
-		CLEAN_SOURCE
-		sleep 1
-		ONEUI_STATE
-		echo " "
-		DISPLAY_ELAPSED_TIME
-		echo " "
-		echo "                 *****************************************************"
-		echo "*****************                                                     *****************"
-		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
-		echo "*****************                                                     *****************"
-		echo "                 *****************************************************"
+		COMMON_STEPS
 		break
 		;;
 	"$SM_A307X")
@@ -568,32 +597,7 @@ do
 		echo " "
 		DEVICE_Axxx=$DEVICE_A307
 		DEFCONFIG=exynos7885-a30s_"$TYPE"_"$SELINUX_STATUS"defconfig
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "        Starting compilation of $DEVICE_Axxx kernel  "
-		echo "                                                     "
-		echo " Defconfig = $DEFCONFIG                              "
-		echo "                                                     "
-		echo "*****************************************************"
-		RENAME
-		sleep 2
-		echo " "	
-		BUILD_KERNEL
-		echo " "
-		sleep 2
-		ZIPPIFY
-		sleep 2
-		CLEAN_SOURCE
-		sleep 1
-		ONEUI_STATE
-		echo " "
-		DISPLAY_ELAPSED_TIME
-		echo " "
-		echo "                 *****************************************************"
-		echo "*****************                                                     *****************"
-		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
-		echo "*****************                                                     *****************"
-		echo "                 *****************************************************"
+		COMMON_STEPS
 		break
 		;;
 	"$SM_A405X")
@@ -604,32 +608,7 @@ do
 		echo " "
 		DEVICE_Axxx=$DEVICE_A405
 		DEFCONFIG=exynos7885-a40_"$TYPE"_"$SELINUX_STATUS"defconfig
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "        Starting compilation of $DEVICE_Axxx kernel  "
-		echo "                                                     "
-		echo " Defconfig = $DEFCONFIG                              "
-		echo "                                                     "
-		echo "*****************************************************"
-		RENAME
-		sleep 2
-		echo " "	
-		BUILD_KERNEL
-		echo " "
-		sleep 2
-		ZIPPIFY
-		sleep 2
-		CLEAN_SOURCE
-		sleep 1
-		ONEUI_STATE
-		echo " "
-		DISPLAY_ELAPSED_TIME
-		echo " "
-		echo "                 *****************************************************"
-		echo "*****************                                                     *****************"
-		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
-		echo "*****************                                                     *****************"
-		echo "                 *****************************************************"
+		COMMON_STEPS
 		break
 		;;
 	"$SM_A505X")
@@ -640,32 +619,7 @@ do
 		echo " "
 		DEVICE_Axxx=$DEVICE_A505
 		DEFCONFIG=exynos9610-a50_"$TYPE"_"$SELINUX_STATUS"defconfig
-		echo "*****************************************************"
-		echo "                                                     "
-		echo "        Starting compilation of $DEVICE_Axxx kernel  "
-		echo "                                                     "
-		echo " Defconfig = $DEFCONFIG                              "
-		echo "                                                     "
-		echo "*****************************************************"
-		RENAME
-		sleep 2
-		echo " "	
-		BUILD_KERNEL
-		echo " "
-		sleep 2
-		ZIPPIFY
-		sleep 2
-		CLEAN_SOURCE
-		sleep 1
-		ONEUI_STATE
-		echo " "
-		DISPLAY_ELAPSED_TIME
-		echo " "
-		echo "                 *****************************************************"
-		echo "*****************                                                     *****************"
-		echo "                      $DEVICE_Axxx kernel for Android $AND_VER build finished          "
-		echo "*****************                                                     *****************"
-		echo "                 *****************************************************"
+		COMMON_STEPS
 		break
 		;;
 	"Exit")
