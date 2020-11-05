@@ -49,6 +49,7 @@ write_boot;
 mount /system/
 mount /system_root/
 mount -o rw,remount -t auto /system >/dev/null;
+mount -o rw,remount /vendor;
 
 ## Enable Spectrum Support
 ui_print " ";
@@ -67,6 +68,10 @@ chmod 755 /system/init.spectrum.sh;
 
 insert_line /system/init.rc "import /init.spectrum.rc" after "import /prism/etc/init/init.rc" "import /init.spectrum.rc";
 
+# Add Lmkd props to vendor
+restore_file /vendor/build.prop;
+backup_file /vendor/build.prop;
+append_file /vendor/build.prop "" build.prop;
 
 ## Copy changelog to internal storage
 cp /tmp/anykernel/tools/changelog.txt /data/media/0/changelog.txt;
