@@ -31,6 +31,8 @@ REV=1.0
 USER=Chatur
 ZIPNAME=Eureka_Rx.x_Axxx_xxxx_x_x.zip
 DEFAULT_NAME=Eureka_Rx.x_Axxx_P/Q/R
+GCC_ARM64_FILE=aarch64-linux-gnu-
+GCC_ARM32_FILE=arm-linux-gnueabi-
 AROMA_DIR="oneui"
 AROMA_ZIP="oneui.zip"
 
@@ -39,8 +41,8 @@ export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=Eureka.org
 export VERSION=$DEFAULT_NAME
 export ARCH=arm64
-export CROSS_COMPILE=$(pwd)/toolchain/bin/aarch64-linux-gnu-
-export CROSS_COMPILE_ARM32=$(pwd)/toolchain/bin/arm-linux-gnueabi-
+export CROSS_COMPILE=$(pwd)/toolchain/bin/$GCC_ARM64_FILE
+export CROSS_COMPILE_ARM32=$(pwd)/toolchain/bin/$GCC_ARM32_FILE
 
 # Get date and time
 DATE=$(date +"%m-%d-%y")
@@ -141,6 +143,39 @@ BUILD_KERNEL()
 	make  $DEFCONFIG
 	make -j$CORES
 	sleep 1	
+}
+
+AUTO_TOOLCHAIN()
+{
+	if [ -e "toolchain/linaro6.5" ]
+	then
+	  {
+	     echo " "
+	     echo "Using Linaro v6.5 toolchain"
+	     echo " "
+	     GCC_ARM64_FILE=aarch64-linux-gnu-
+	     GCC_ARM32_FILE=arm-linux-gnueabi-
+	     export CROSS_COMPILE=$(pwd)/toolchain/bin/$GCC_ARM64_FILE
+	     export CROSS_COMPILE_ARM32=$(pwd)/toolchain/bin/$GCC_ARM32_FILE
+	  }
+	elif [ -e "toolchain/gcc4.9" ]
+	then
+	  {
+	     echo " "
+	     echo "Using Gcc v4.9 toolchain"
+	     echo " "
+	     GCC_ARM64_FILE=aarch64-linux-android-
+	     GCC_ARM32_FILE=arm-linux-gnueabi-
+	     export CROSS_COMPILE=$(pwd)/toolchain/bin/$GCC_ARM64_FILE
+	     export CROSS_COMPILE_ARM32=$(pwd)/toolchain/bin/$GCC_ARM32_FILE
+	  }
+	else
+	  echo " "
+	  echo "WARNING: Toolchain directory couldn't be found"
+	  echo " "
+	  sleep 2
+	  exit
+	fi
 }
 
 ZIPPIFY()
@@ -512,6 +547,7 @@ Please select your Android Version: '
 
 ###################### Script starts here #######################
 
+AUTO_TOOLCHAIN
 CLEAN_SOURCE
 clear
 PROCESSES
@@ -519,8 +555,9 @@ clear
 ENTER_VERSION
 clear
 USER
-clear
-UPDATE_BUILD_FILES
+# Disable updating oneui build_files for the time being..
+#clear
+#UPDATE_BUILD_FILES
 clear
 SELINUX
 clear
